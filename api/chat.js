@@ -1,5 +1,18 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+// Rate limiting configuration (per-instance, will reset on cold starts)
+const rateLimiter = {
+    lastCall: 0,
+    minInterval: 2000, // 2 seconds between messages
+    callsInLastMinute: 0,
+    maxCallsPerMinute: 20,
+    lastMinuteReset: Date.now()
+};
+
 // Function to handle CORS headers
 const setCorsHeaders = (req, res) => {
     // Get the origin from the request headers
@@ -19,21 +32,7 @@ const setCorsHeaders = (req, res) => {
     return false;
 };
 
-// Rate limiting configuration
-const rateLimiter = {
-    lastCall: 0,
-    minInterval: 2000, // 2 seconds between messages
-    callsInLastMinute: 0,
-    maxCallsPerMinute: 20,
-    lastMinuteReset: Date.now()
-};
-
-// Reset rate limiter counts every minute
-setInterval(() => {
-    rateLimiter.callsInLastMinute = 0;
-    rateLimiter.lastMinuteReset = Date.now();
-}, 60000);
-
+// System prompt for chatbot
 const SYSTEM_PROMPT = `You are an AI chatbot assistant for Echoline AI, a company that provides AI-powered chat solutions for businesses. Your role is to:
 1. Answer questions about our services, pricing, and features
 2. Help potential customers understand our offerings
@@ -74,70 +73,68 @@ if (!process.env.GOOGLE_API_KEY) {
     throw new ChatError('Missing API key', 'api_key');
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
-
-// Main Handler
 export default async function handler(req, res) {
-    // Handle CORS headers
-    if (setCorsHeaders(req, res)) {
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Credentials', true);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+    // Handle preflight request
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
         return;
+    }
+
+    // Only allow POST requests
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
     try {
         const { message } = req.body;
-        if (!message?.trim()) {
-            throw new ChatError('Message is required', 'validation');
+        
+        if (!message) {
+            return res.status(400).json({ error: 'Message is required' });
         }
 
+        // Rate limiting checks
         const now = Date.now();
-
-        // Check time since last message
-        const timeSinceLastCall = now - rateLimiter.lastCall;
-        if (timeSinceLastCall < rateLimiter.minInterval) {
-            throw new ChatError(
-                `Please wait ${Math.ceil((rateLimiter.minInterval - timeSinceLastCall) / 1000)} seconds before sending another message`,
-                'rate_limit'
-            );
+        if (now - rateLimiter.lastCall < rateLimiter.minInterval) {
+            return res.status(429).json({ 
+                error: 'Too many requests',
+                message: 'Please wait before sending another message.'
+            });
         }
 
-        // Check calls per minute
         if (now - rateLimiter.lastMinuteReset > 60000) {
             rateLimiter.callsInLastMinute = 0;
             rateLimiter.lastMinuteReset = now;
         }
 
         if (rateLimiter.callsInLastMinute >= rateLimiter.maxCallsPerMinute) {
-            throw new ChatError(
-                'Message limit reached. Please wait a minute before sending more messages.',
-                'rate_limit'
-            );
+            return res.status(429).json({ 
+                error: 'Rate limit exceeded',
+                message: 'You have exceeded the maximum number of messages per minute.'
+            });
         }
 
-        // Update rate limiter
+        // Update rate limiting
         rateLimiter.lastCall = now;
         rateLimiter.callsInLastMinute++;
 
-        // Generate response with context
+        // Generate chat response
         const prompt = `${SYSTEM_PROMPT}\n\nUser: ${message}\nAssistant:`;
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const text = response.text();
 
-        if (!text) {
-            throw new ChatError('No response received', 'empty_response');
-        }
-
-        res.status(200).json({ response: text });
+        res.status(200).json({ message: text });
     } catch (error) {
-        console.error('Chat API Error:', error);
-        const statusCode = error.type === 'validation' ? 400 : 500;
-        const message = error.type === 'api_key' ? 'Internal server error' : error.message;
-        
-        res.status(statusCode).json({
-            error: message,
-            type: error.type || 'unknown',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        console.error('Chat error:', error);
+        res.status(500).json({ 
+            error: 'Internal server error',
+            message: 'An error occurred while processing your request.'
         });
     }
 }

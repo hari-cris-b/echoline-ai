@@ -10,11 +10,7 @@ let isTyping = false;
 
 // Function to call Chat API
 async function getChatResponse(message) {
-    const apiUrl = window.location.hostname === 'localhost' 
-        ? '/api/chat'
-        : 'https://echoline-ai.vercel.app/api/chat';
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
