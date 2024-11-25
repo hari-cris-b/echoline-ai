@@ -1,109 +1,184 @@
-// Chat UI Elements
-const chatButton = document.createElement('button');
-const chatWindow = document.createElement('div');
+// Chat UI Elements and State
 let isOpen = false;
-let messages = [];
+let messages = [{
+    id: '1',
+    content: "Hi! I'm the Echoline AI assistant. How can I help you today?",
+    sender: 'bot',
+    timestamp: new Date()
+}];
 let isTyping = false;
+
+// Function to call Chat API
+async function getChatResponse(message) {
+    const apiUrl = window.location.hostname === 'localhost' 
+        ? '/api/chat'
+        : 'https://echoline-ai.vercel.app/api/chat';
+
+    const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message })
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'API request failed');
+    }
+
+    const data = await response.json();
+    return data.message;
+}
 
 // Initialize chat elements
 function initializeChat() {
-    // Style chat button
-    chatButton.className = 'chat-button';
-    chatButton.innerHTML = '<i class="fas fa-comment"></i>';
-    chatButton.onclick = toggleChat;
-    chatButton.style.zIndex = '9999'; // Ensure button is always visible
-
-    // Style chat window
-    chatWindow.className = 'chat-window';
-    chatWindow.style.zIndex = '9998'; // Ensure window is below button but above other content
-    chatWindow.innerHTML = `
-        <div class="chat-header">
-            <h3>Echoline Assistant</h3>
-            <button class="close-button"><i class="fas fa-times"></i></button>
+    // Create chat container
+    const chatContainer = document.createElement('div');
+    chatContainer.className = 'chat-container';
+    chatContainer.innerHTML = `
+        <button class="chat-toggle-btn">
+            <i class="fas fa-comment"></i>
+        </button>
+        <div class="chat-window ${isOpen ? 'open' : ''}">
+            <div class="chat-header">
+                <h3>Echoline Assistant</h3>
+                <button class="close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="chat-messages"></div>
+            <form class="chat-form">
+                <input type="text" placeholder="Type your message..." class="chat-input">
+                <button type="submit" class="send-btn">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
         </div>
-        <div class="chat-messages"></div>
-        <form class="chat-input-form">
-            <input type="text" placeholder="Type your message..." class="chat-input">
-            <button type="submit" class="send-button"><i class="fas fa-paper-plane"></i></button>
-        </form>
     `;
 
-    // Add elements to body
-    document.body.appendChild(chatButton);
-    document.body.appendChild(chatWindow);
+    // Add to body
+    document.body.appendChild(chatContainer);
 
-    // Add event listeners
-    chatWindow.querySelector('.close-button').onclick = toggleChat;
-    chatWindow.querySelector('.chat-input-form').onsubmit = handleSendMessage;
+    // Get elements
+    const toggleBtn = chatContainer.querySelector('.chat-toggle-btn');
+    const closeBtn = chatContainer.querySelector('.close-btn');
+    const chatWindow = chatContainer.querySelector('.chat-window');
+    const chatForm = chatContainer.querySelector('.chat-form');
+    const chatInput = chatContainer.querySelector('.chat-input');
+    const messagesContainer = chatContainer.querySelector('.chat-messages');
 
-    // Add initial message
-    addMessage("Hi! I'm your Echoline assistant. How can I help you today?", 'bot');
-}
+    // Event listeners
+    toggleBtn.addEventListener('click', () => {
+        isOpen = !isOpen;
+        chatWindow.classList.toggle('open');
+        if (isOpen) {
+            chatInput.focus();
+            scrollToBottom();
+        }
+    });
 
-function toggleChat() {
-    isOpen = !isOpen;
-    chatWindow.style.display = isOpen ? 'flex' : 'none';
-    if (isOpen) {
-        chatWindow.querySelector('.chat-input').focus();
-    }
-}
+    closeBtn.addEventListener('click', () => {
+        isOpen = false;
+        chatWindow.classList.remove('open');
+    });
 
-function addMessage(content, sender) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${sender}-message`;
-    messageDiv.innerHTML = content;
-    
-    const messagesContainer = chatWindow.querySelector('.chat-messages');
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const message = chatInput.value.trim();
+        if (!message || isTyping) return;
 
-async function handleSendMessage(e) {
-    e.preventDefault();
-    if (isTyping) return;
-
-    const input = chatWindow.querySelector('.chat-input');
-    const message = input.value.trim();
-    if (!message) return;
-
-    // Clear input
-    input.value = '';
-
-    // Add user message
-    addMessage(message, 'user');
-
-    // Show typing indicator
-    isTyping = true;
-    addMessage('<div class="typing-indicator"><span></span><span></span><span></span></div>', 'bot');
-
-    try {
-        // Send to backend and get response
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ message })
+        // Add user message
+        addMessage({
+            id: Date.now().toString(),
+            content: message,
+            sender: 'user',
+            timestamp: new Date()
         });
 
-        if (!response.ok) {
-            throw new Error('Failed to get response');
-        }
+        chatInput.value = '';
+        isTyping = true;
 
-        const data = await response.json();
-        
-        // Remove typing indicator and add bot response
-        const messagesContainer = chatWindow.querySelector('.chat-messages');
-        messagesContainer.removeChild(messagesContainer.lastChild);
-        addMessage(data.response, 'bot');
-    } catch (error) {
-        console.error('Chat error:', error);
-        const messagesContainer = chatWindow.querySelector('.chat-messages');
-        messagesContainer.removeChild(messagesContainer.lastChild);
-        addMessage('Sorry, I encountered an error. Please try again.', 'bot');
-    } finally {
-        isTyping = false;
+        try {
+            // Show typing indicator
+            showTypingIndicator();
+
+            // Get response from API
+            const botResponse = await getChatResponse(message);
+
+            // Remove typing indicator and add bot response
+            removeTypingIndicator();
+            addMessage({
+                id: Date.now().toString(),
+                content: botResponse,
+                sender: 'bot',
+                timestamp: new Date()
+            });
+        } catch (error) {
+            console.error('Chat error:', error);
+            removeTypingIndicator();
+            addMessage({
+                id: Date.now().toString(),
+                content: "I'm sorry, I couldn't process your request. Please try again.",
+                sender: 'bot',
+                timestamp: new Date(),
+                status: 'error'
+            });
+        } finally {
+            isTyping = false;
+            scrollToBottom();
+        }
+    });
+
+    // Initial messages render
+    renderMessages();
+}
+
+function addMessage(message) {
+    messages.push(message);
+    renderMessages();
+    scrollToBottom();
+}
+
+function renderMessages() {
+    const messagesContainer = document.querySelector('.chat-messages');
+    if (!messagesContainer) return;
+
+    messagesContainer.innerHTML = messages.map(msg => `
+        <div class="message ${msg.sender} ${msg.status || ''}">
+            <div class="message-content">${msg.content}</div>
+            <div class="message-timestamp">${formatTimestamp(msg.timestamp)}</div>
+        </div>
+    `).join('');
+}
+
+function showTypingIndicator() {
+    const messagesContainer = document.querySelector('.chat-messages');
+    if (!messagesContainer) return;
+
+    const typingIndicator = document.createElement('div');
+    typingIndicator.className = 'message bot typing';
+    typingIndicator.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+    messagesContainer.appendChild(typingIndicator);
+    scrollToBottom();
+}
+
+function removeTypingIndicator() {
+    const typingIndicator = document.querySelector('.typing');
+    if (typingIndicator) {
+        typingIndicator.remove();
     }
+}
+
+function scrollToBottom() {
+    const messagesContainer = document.querySelector('.chat-messages');
+    if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+function formatTimestamp(date) {
+    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // Initialize when DOM is loaded
