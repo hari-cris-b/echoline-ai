@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
-// Rate limiting configuration (per-instance, will reset on cold starts)
+// Rate limiting configuration
 const rateLimiter = {
     lastCall: 0,
     minInterval: 2000, // 2 seconds between messages
@@ -16,13 +16,22 @@ const rateLimiter = {
 // Function to handle CORS headers
 const setCorsHeaders = (req, res) => {
     // Get the origin from the request headers
-    const origin = req.headers.origin || 'https://echoline-ai.vercel.app';
+    const origin = req.headers.origin || '*';
+    const allowedOrigins = [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'https://echoline-ai.vercel.app'
+    ];
+
+    // Set CORS headers based on origin
+    if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', 'https://echoline-ai.vercel.app');
+    }
     
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
@@ -49,17 +58,12 @@ About Echoline AI:
 Features:
 - Custom AI Training
 - Instant Setup (under 5 minutes)
-- Multi-platform Integration
+- Multi-language Support
 - Analytics Dashboard
 - Secure Data Handling
+- 24/7 Availability
 
-Pricing Plans:
-- Basic: $29/month (Essential features)
-- Professional: $59/month (Advanced features)
-- Enterprise: $99/month (Full feature set)
-- Custom: Contact for custom solutions
-
-If a visitor asks about unrelated topics, politely guide them back to discussing our services and solutions.`;
+If a visitor asks about unrelated topics, politely guide them back to discussing Echoline AI's services and features.`;
 
 class ChatError extends Error {
     constructor(message, type) {
@@ -74,67 +78,69 @@ if (!process.env.GOOGLE_API_KEY) {
 }
 
 export default async function handler(req, res) {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
-
-    // Handle preflight request
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
-    }
-
-    // Only allow POST requests
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+    // Handle CORS
+    if (setCorsHeaders(req, res)) return;
 
     try {
+        // Only allow POST method
+        if (req.method !== 'POST') {
+            throw new ChatError('Method not allowed', 'method_not_allowed');
+        }
+
         const { message } = req.body;
-        
         if (!message) {
-            return res.status(400).json({ error: 'Message is required' });
+            throw new ChatError('Message is required', 'invalid_request');
         }
 
-        // Rate limiting checks
         const now = Date.now();
-        if (now - rateLimiter.lastCall < rateLimiter.minInterval) {
-            return res.status(429).json({ 
-                error: 'Too many requests',
-                message: 'Please wait before sending another message.'
-            });
+
+        // Check time since last message
+        const timeSinceLastCall = now - rateLimiter.lastCall;
+        if (timeSinceLastCall < rateLimiter.minInterval) {
+            throw new ChatError(
+                `Please wait ${Math.ceil((rateLimiter.minInterval - timeSinceLastCall) / 1000)} seconds before sending another message`,
+                'rate_limit'
+            );
         }
 
+        // Check calls per minute
         if (now - rateLimiter.lastMinuteReset > 60000) {
             rateLimiter.callsInLastMinute = 0;
             rateLimiter.lastMinuteReset = now;
         }
 
         if (rateLimiter.callsInLastMinute >= rateLimiter.maxCallsPerMinute) {
-            return res.status(429).json({ 
-                error: 'Rate limit exceeded',
-                message: 'You have exceeded the maximum number of messages per minute.'
-            });
+            throw new ChatError(
+                'Message limit reached. Please wait a minute before sending more messages.',
+                'rate_limit'
+            );
         }
 
-        // Update rate limiting
+        // Update rate limiter
         rateLimiter.lastCall = now;
         rateLimiter.callsInLastMinute++;
 
-        // Generate chat response
+        // Generate response with context
         const prompt = `${SYSTEM_PROMPT}\n\nUser: ${message}\nAssistant:`;
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        const text = response.text();
 
-        res.status(200).json({ message: text });
+        res.status(200).json({
+            message: response.text(),
+            status: 'success'
+        });
+
     } catch (error) {
-        console.error('Chat error:', error);
-        res.status(500).json({ 
-            error: 'Internal server error',
-            message: 'An error occurred while processing your request.'
+        console.error('Chat API Error:', error);
+
+        const statusCode = error instanceof ChatError ? 400 : 500;
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+        const errorType = error instanceof ChatError ? error.type : 'internal_error';
+
+        res.status(statusCode).json({
+            error: errorMessage,
+            type: errorType,
+            status: 'error'
         });
     }
 }
