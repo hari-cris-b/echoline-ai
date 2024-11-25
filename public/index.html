@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Echoline - AI Chatbot Service</title>
+    <link rel="icon" type="image/png" href="assets/images/echoline.png">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <nav class="nav-container">
+            <div class="logo"><img src="assets/images/echoline.png" alt="Echoline AI Logo"/>Echoline AI</div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#team">Our Team</a>
+                <!-- <a href="#contact">Contact</a> -->
+                <button class="btn-primary" onclick="Calendly.initPopupWidget({url: 'https://calendly.com/haricrisbfreelancer/15min?primary_color=8e00ff'});">Contact</button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Transform Your Business with AI-Powered Chat Solutions</h1>
+                <p>with Echoline AI Chatbot Service</p>
+                <div class="cta-buttons">
+                    <!-- <button class="btn-primary">Start Free Trial</button> -->
+                    <button class="btn-primary" onclick="Calendly.initPopupWidget({url: 'https://calendly.com/haricrisbfreelancer/15min?primary_color=8e00ff'});">Let's Talk</button> 
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="features">
+            <h2>Why Choose Our AI Chat Solution?</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <i class="fas fa-robot"></i>
+                    <h3>Custom AI Training</h3>
+                    <p>Train your chatbot with your business data for personalized responses.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-bolt"></i>
+                    <h3>Instant Setup</h3>
+                    <p>Get your chatbot up and running in less than 5 minutes.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>Analytics Dashboard</h3>
+                    <p>Track performance and user interactions in real-time.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-globe"></i>
+                    <h3>Multilingual Support</h3>
+                    <p>Communicate with customers in their preferred language.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="pricing" class="pricing">
+            <h2>Simple, Transparent Pricing</h2>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Starter</h3>
+                    <div class="price">$29<span>/month</span></div>
+                    <ul>
+                        <li>1,000 messages/month</li>
+                        <li>Basic customization</li>
+                        <li>Email support</li>
+                        <li>Basic analytics</li>
+                    </ul>
+                    <button class="btn-secondary">Choose Plan</button>
+                </div>
+                <div class="pricing-card featured">
+                    <h3>Professional</h3>
+                    <div class="price">$99<span>/month</span></div>
+                    <ul>
+                        <li>10,000 messages/month</li>
+                        <li>Advanced customization</li>
+                        <li>Priority support</li>
+                        <li>Advanced analytics</li>
+                    </ul>
+                    <button class="btn-primary">Choose Plan</button>
+                </div>
+                <div class="pricing-card">
+                    <h3>Enterprise</h3>
+                    <div class="price">Custom</div>
+                    <ul>
+                        <li>Unlimited messages</li>
+                        <li>Full customization</li>
+                        <li>24/7 support</li>
+                        <li>Custom integration</li>
+                    </ul>
+                    <button class="btn-secondary" onclick="Calendly.initPopupWidget({url: 'https://calendly.com/haricrisbfreelancer/15min?primary_color=8e00ff'});">Contact Sales</button> 
+                </div>
+            </div>
+        </section>
+
+        <section id="team" class="team">
+            <h2>Our Team</h2>
+            <div class="team-content">
+                <p>Our team consists of industry veterans with over 15 years of combined experience in AI and machine learning. We bring together expertise from leading tech companies and research institutions, specializing in natural language processing, cloud architecture, and enterprise AI solutions. Our passion is creating cutting-edge AI technology that delivers real business value.</p>
+            </div>
+        </section>
+
+        <section id="contact" class="contact">
+            <h2>Get Started Today</h2>
+            <div class="contact-container">
+                <form class="contact-form">
+                    <input type="text" name="name" placeholder="Your Name" required>
+                    <input type="email" name="email" placeholder="Your Email" required>
+                    <input type="text" name="company" placeholder="Company Name">
+                    <textarea name="message" placeholder="How can we help you?" required></textarea>
+                    <button type="submit" class="btn-primary">Send Message</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4 class="logo"><img src="assets/images/echoline.png" alt="Echoline AI Logo"/>Echoline AI</h4>
+                <p>Transform your customer service with AI-powered solutions.</p>
+            </div>
+            <div class="footer-section">
+                <h4>Quick Links</h4>
+                <a href="#features">Features</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#team">Our Team</a>
+                <a href="#contact">Contact</a>
+            </div>
+            <div class="footer-section">
+                <h4>Contact</h4>
+                <p>Email: info@echoline.com</p>
+                <p>Phone: (555) 123-4567</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; <script>document.write(new Date().getFullYear());</script> Echoline AI. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script>
+        (function() {
+            emailjs.init("UoXECWsNw6Vnz9Yol");
+        })();
+    </script>
+    <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="/js/main.js"></script>
+    <script src="js/chat.js"></script>
+</body>
+</html>
